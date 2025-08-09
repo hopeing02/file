@@ -1,40 +1,10 @@
-// ========================================
-    // Enhanced 기능 전용 함수들
-    // ========================================
-    
-    // 파일별 내용 분석 상태 확인
-    function analyzeFileContent(file) {
-      const analysis = {
-        hasTitle: file.title && file.title !== file.name,
-        hasContent: file.content && file.content.length > 0,
-        isExtractable: file.extractable || false,
-        contentLength: file.contentLength || 0,
-        wordCount: file.wordCount || 0,
-        score: 0
-      };
-      
-      // 분석 점수 계산
-      if (analysis.hasTitle) analysis.score += 30;
-      if (analysis.hasContent) analysis.score += 50;
-      if (analysis.isExtractable) analysis.score += 20;
-      if (analysis.contentLength > 100) analysis.score += 10;
-      if (analysis.wordCount > 10) analysis.score += 10;
-      
-      return analysis;
-    }
-    
-    // Enhanced 검색 하이라이팅
-    function highlightSearchTerm(text, searchTerm) {
-      if (!text || !searchTerm) return text;
-      
-      const regex = new RegExp(`(${escapeRegExp(searchTerm)})`, 'gi');
-      return text.replace(regex, '<mark class="search-highlight">$1<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
-  <title>D드라이브 파일 탐색기</title>
+  <title>D드라이브 파일 탐색기 Enhanced</title>
   <style>
     * {
       margin: 0;
@@ -115,6 +85,11 @@
     .btn.danger {
       background: linear-gradient(135deg, #e74c3c, #c0392b);
       box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+    }
+
+    .btn.enhanced {
+      background: linear-gradient(135deg, #9b59b6, #8e44ad);
+      box-shadow: 0 4px 15px rgba(155, 89, 182, 0.3);
     }
 
     .search-box {
@@ -202,7 +177,7 @@
 
     .file-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: 15px;
       padding: 20px;
       overflow-y: auto;
@@ -234,10 +209,32 @@
     .file-item.archive { border-left-color: #e67e22; }
     .file-item.code { border-left-color: #34495e; }
 
+    .file-item.extractable {
+      border-left-width: 6px;
+      background: linear-gradient(135deg, #fff 0%, #f8f9ff 100%);
+    }
+
     .file-icon {
       font-size: 2.2em;
       margin-bottom: 10px;
       text-align: center;
+      position: relative;
+    }
+
+    .extractable-badge {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      background: #27ae60;
+      color: white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      font-size: 0.5em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
     }
 
     .file-name {
@@ -247,6 +244,37 @@
       margin-bottom: 8px;
       word-break: break-word;
       line-height: 1.3;
+    }
+
+    .file-title {
+      font-size: 0.9em;
+      color: #8e44ad;
+      margin-bottom: 5px;
+      font-style: italic;
+      word-break: break-word;
+      max-height: 40px;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2; /* 표준 속성 */
+      -webkit-box-orient: vertical;
+    }
+
+    .file-content-preview {
+      font-size: 0.75em;
+      color: #7f8c8d;
+      margin-bottom: 8px;
+      max-height: 60px;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      line-clamp: 3; /* 표준 속성 */
+      -webkit-box-orient: vertical;
+      line-height: 1.4;
+      background: #f8f9fa;
+      padding: 5px 8px;
+      border-radius: 4px;
+      border-left: 3px solid #ddd;
     }
 
     .file-path {
@@ -272,6 +300,34 @@
 
     .file-date {
       color: #95a5a6;
+    }
+
+    .file-enhanced-info {
+      display: flex;
+      gap: 10px;
+      margin-top: 5px;
+      font-size: 0.7em;
+    }
+
+    .info-badge {
+      background: #ecf0f1;
+      color: #2c3e50;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-weight: 500;
+    }
+
+    .info-badge.extractable {
+      background: #d5f4e6;
+      color: #27ae60;
+    }
+
+    .search-highlight {
+      background: #fff3cd;
+      color: #856404;
+      padding: 1px 3px;
+      border-radius: 2px;
+      font-weight: bold;
     }
 
     .empty-state {
@@ -421,18 +477,20 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>📁 D드라이브 파일 탐색기</h1>
-      <p>실시간 파일 시스템 탐색</p>
+      <h1>📁 D드라이브 파일 탐색기 Enhanced</h1>
+      <p>실시간 파일 시스템 탐색 + 내용 분석</p>
     </div>
 
     <div class="controls">
       <div class="drive-selector" id="driveSelector">
         <!-- 드라이브 버튼들이 동적으로 추가됩니다 -->
       </div>
-      <button class="btn" id="scanBtn" onclick="scanDrive()">🔍 D드라이브 스캔</button>
+      <button class="btn" id="scanBtn" onclick="scanDrive()">🔍 드라이브 스캔</button>
       <button class="btn secondary" id="refreshBtn" onclick="refreshCurrent()" disabled>🔄 새로고침</button>
-      <button class="btn danger" onclick="clearResults()">🗑️결과 지우기</button>
-      <input type="text" class="search-box" id="searchBox" placeholder="파일명으로 검색..." oninput="filterFiles()">
+      <button class="btn enhanced" onclick="showEnhancedSearch()">🔎 고급 검색</button>
+      <button class="btn enhanced" onclick="loadLatestScan()">📂 최근 스캔</button>
+      <button class="btn danger" onclick="clearResults()">🗑️ 결과 지우기</button>
+      <input type="text" class="search-box" id="searchBox" placeholder="파일명, 제목, 내용으로 검색..." oninput="filterFiles()">
     </div>
 
     <div class="stats" id="stats" style="display: none;">
@@ -449,6 +507,10 @@
         <div class="stat-label">총 크기</div>
       </div>
       <div class="stat-item">
+        <span class="stat-number" id="extractableFiles">0</span>
+        <div class="stat-label">내용 추출</div>
+      </div>
+      <div class="stat-item">
         <span class="stat-number" id="scanTime">0초</span>
         <div class="stat-label">스캔 시간</div>
       </div>
@@ -458,8 +520,9 @@
       <div id="results">
         <div class="empty-state">
           <div style="font-size: 4em; margin-bottom: 20px;">💿</div>
-          <h3>파일 시스템을 스캔해보세요</h3>
-          <p>D드라이브 또는 다른 드라이브를 선택하여 파일과 폴더를 탐색할 수 있습니다.</p>
+          <h3>Enhanced 파일 시스템을 스캔해보세요</h3>
+          <p>드라이브를 선택하여 파일과 폴더를 탐색하고 내용을 분석할 수 있습니다.</p>
+          <p style="margin-top: 10px; color: #9b59b6;">🔎 고급 검색으로 파일 내용까지 검색 가능합니다!</p>
         </div>
       </div>
     </div>
@@ -469,6 +532,7 @@
     <div class="context-menu-item" onclick="contextAction('open')">📂 열기</div>
     <div class="context-menu-item" onclick="contextAction('openFolder')">📁 폴더에서 보기</div>
     <div class="context-menu-item" onclick="contextAction('copy')">📋 경로 복사</div>
+    <div class="context-menu-item" onclick="contextAction('details')">📋 상세 정보</div>
   </div>
 
   <script>
@@ -478,6 +542,7 @@
     let currentPath = '';
     let contextTarget = null;
     let scanStartTime = 0;
+    let isEnhancedSearchMode = false;
 
     // 초기화
     document.addEventListener('DOMContentLoaded', function() {
@@ -485,19 +550,11 @@
       setupEventListeners();
     });
 
-    // 드라이브 목록 로드 (안전한 방식)
+    // 드라이브 목록 로드
     async function loadDrives() {
       try {
-        // Electron API가 존재하는지 확인
-        if (!window.electronAPI) {
+        if (!window.electronAPI || typeof window.electronAPI.getDrives !== 'function') {
           console.warn('Electron API가 로드되지 않았습니다. 기본 드라이브 버튼을 생성합니다.');
-          createDefaultDriveButtons();
-          return;
-        }
-
-        // getDrives 함수가 존재하는지 확인
-        if (typeof window.electronAPI.getDrives !== 'function') {
-          console.warn('getDrives 함수가 정의되지 않았습니다. 기본 드라이브 버튼을 생성합니다.');
           createDefaultDriveButtons();
           return;
         }
@@ -520,7 +577,6 @@
           
           console.log(`${result.drives.length}개 드라이브 로드 완료`);
         } else {
-          console.warn('드라이브 정보를 받을 수 없습니다. 기본 드라이브 버튼을 생성합니다.');
           createDefaultDriveButtons();
         }
       } catch (error) {
@@ -529,12 +585,11 @@
       }
     }
 
-    // 기본 드라이브 버튼 생성 함수
+    // 기본 드라이브 버튼 생성
     function createDefaultDriveButtons() {
       const driveSelector = document.getElementById('driveSelector');
       driveSelector.innerHTML = '';
       
-      // 일반적인 Windows 드라이브 목록
       const commonDrives = ['C', 'D', 'E', 'F'];
       
       commonDrives.forEach(function(letter) {
@@ -548,7 +603,7 @@
         driveSelector.appendChild(btn);
       });
       
-      console.log('기본 드라이브 버튼 생성 완료 (C:, D:, E:, F:)');
+      console.log('기본 드라이브 버튼 생성 완료');
     }
 
     // 이벤트 리스너 설정
@@ -629,10 +684,22 @@
       });
     }
 
-    // 파일/폴더 열기 (안전한 방식)
+    // Enhanced 검색 하이라이팅
+    function highlightSearchTerm(text, searchTerm) {
+      if (!text || !searchTerm) return text;
+      
+      const regex = new RegExp(`(${escapeRegExp(searchTerm)})`, 'gi');
+      return text.replace(regex, '<span class="search-highlight">$1</span>');
+    }
+
+    // 정규식 특수문자 이스케이프
+    function escapeRegExp(string) {
+      return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    // 파일/폴더 열기
     async function openFileOrFolder(filePath, isDirectory) {
       try {
-        // Electron API 존재 확인
         if (!window.electronAPI) {
           showNotification('파일 열기 기능을 사용할 수 없습니다. Electron 환경이 필요합니다.', 'error');
           return;
@@ -688,14 +755,13 @@
       }
     }
 
-    // 컨텍스트 메뉴 액션 (안전한 방식)
+    // 컨텍스트 메뉴 액션
     async function contextAction(action) {
       const contextMenu = document.getElementById('contextMenu');
       contextMenu.style.display = 'none';
       
       if (!contextTarget) return;
       
-      // Electron API 존재 확인
       if (!window.electronAPI) {
         showNotification('이 기능을 사용하려면 Electron 환경이 필요합니다.', 'error');
         return;
@@ -748,12 +814,24 @@
                 await navigator.clipboard.writeText(contextTarget.path);
                 showNotification('📋 경로가 클립보드에 복사되었습니다');
               } else {
-                // 클립보드 API가 지원되지 않는 경우 fallback
                 showNotification('클립보드 기능이 지원되지 않는 브라우저입니다.', 'error');
               }
             } catch (clipboardError) {
               console.warn('클립보드 복사 실패:', clipboardError);
               showError('클립보드에 복사할 수 없습니다');
+            }
+            break;
+
+          case 'details':
+            if (typeof window.electronAPI.getFileDetails === 'function') {
+              const detailsResult = await window.electronAPI.getFileDetails(contextTarget.path);
+              if (detailsResult && detailsResult.success) {
+                showFileDetails(detailsResult.file);
+              } else {
+                showNotification('파일 상세 정보를 가져올 수 없습니다.', 'error');
+              }
+            } else {
+              showNotification('상세 정보 기능이 지원되지 않습니다.', 'error');
             }
             break;
             
@@ -766,9 +844,60 @@
       }
     }
 
-    // 파일 목록 렌더링
+    // 파일 상세 정보 표시
+    function showFileDetails(file) {
+      const detailsHTML = `
+        <div style="background: white; padding: 20px; border-radius: 10px; max-width: 500px; margin: 20px auto; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+          <h3 style="color: #2c3e50; margin-bottom: 15px;">📋 파일 상세 정보</h3>
+          <div style="font-size: 14px; line-height: 1.6;">
+            <p><strong>파일명:</strong> ${file.name}</p>
+            <p><strong>제목:</strong> ${file.title || file.name}</p>
+            <p><strong>경로:</strong> ${file.path}</p>
+            <p><strong>크기:</strong> ${formatFileSize(file.size || 0)}</p>
+            <p><strong>수정일:</strong> ${formatDate(file.modified)}</p>
+            <p><strong>내용 추출:</strong> ${file.extractable ? '✅ 가능' : '❌ 불가능'}</p>
+            ${file.extractable ? `
+              <p><strong>내용 길이:</strong> ${(file.contentLength || 0).toLocaleString()} 글자</p>
+              <p><strong>단어 수:</strong> ${(file.wordCount || 0).toLocaleString()} 개</p>
+            ` : ''}
+            ${file.content ? `
+              <div style="margin-top: 15px;">
+                <strong>내용 미리보기:</strong>
+                <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 5px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; white-space: pre-wrap;">${file.content.substring(0, 500)}${file.content.length > 500 ? '...' : ''}</div>
+              </div>
+            ` : ''}
+          </div>
+          <button onclick="this.parentElement.remove()" style="margin-top: 15px; background: #3498db; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">닫기</button>
+        </div>
+      `;
+      
+      const overlay = document.createElement('div');
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 2000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      `;
+      overlay.innerHTML = detailsHTML;
+      overlay.onclick = function(e) {
+        if (e.target === overlay) {
+          overlay.remove();
+        }
+      };
+      
+      document.body.appendChild(overlay);
+    }
+
+    // Enhanced 파일 목록 렌더링
     function renderFiles(files) {
       const resultsDiv = document.getElementById('results');
+      const searchTerm = document.getElementById('searchBox').value.toLowerCase();
       
       if (files.length === 0) {
         resultsDiv.innerHTML = `
@@ -776,6 +905,7 @@
             <div style="font-size: 4em; margin-bottom: 20px;">🔍</div>
             <h3>파일을 찾을 수 없습니다</h3>
             <p>검색 조건을 확인하거나 다시 스캔해보세요.</p>
+            ${isEnhancedSearchMode ? '<p style="color: #9b59b6;">🔎 Enhanced 검색 모드가 활성화되어 있습니다.</p>' : ''}
           </div>
         `;
         return;
@@ -783,17 +913,40 @@
 
       const fileGridHTML = files.map(function(file) {
         const escapedPath = file.path.replace(/'/g, "\\'");
+        const category = getFileCategory(file.name, file.isDirectory);
+        const icon = getFileIcon(file.name, file.isDirectory);
+        
+        // 검색어 하이라이팅 적용
+        const highlightedName = searchTerm ? highlightSearchTerm(file.name, searchTerm) : file.name;
+        const highlightedTitle = searchTerm && file.title && file.title !== file.name ? 
+          highlightSearchTerm(file.title, searchTerm) : (file.title && file.title !== file.name ? file.title : '');
+        const highlightedContent = searchTerm && file.content ? 
+          highlightSearchTerm(file.content.substring(0, 150), searchTerm) : 
+          (file.content ? file.content.substring(0, 150) : '');
+
         return `
-          <div class="file-item ${getFileCategory(file.name, file.isDirectory)}" 
+          <div class="file-item ${category} ${file.extractable ? 'extractable' : ''}" 
                onclick="openFileOrFolder('${escapedPath}', ${file.isDirectory})"
                oncontextmenu="showContextMenu(event, '${escapedPath}', ${file.isDirectory})">
-            <div class="file-icon">${getFileIcon(file.name, file.isDirectory)}</div>
-            <div class="file-name">${file.name}</div>
+            <div class="file-icon">
+              ${icon}
+              ${file.extractable ? '<div class="extractable-badge">✓</div>' : ''}
+            </div>
+            <div class="file-name">${highlightedName}</div>
+            ${highlightedTitle ? `<div class="file-title">${highlightedTitle}</div>` : ''}
+            ${highlightedContent ? `<div class="file-content-preview">${highlightedContent}${file.content && file.content.length > 150 ? '...' : ''}</div>` : ''}
             <div class="file-path">${file.path}</div>
             <div class="file-info">
               ${file.size ? `<span class="file-size">${formatFileSize(file.size)}</span>` : '<span class="file-size">-</span>'}
               <span class="file-date">${file.modified ? formatDate(file.modified) : ''}</span>
             </div>
+            ${file.extractable || file.wordCount || file.contentLength ? `
+              <div class="file-enhanced-info">
+                ${file.extractable ? '<span class="info-badge extractable">추출 가능</span>' : ''}
+                ${file.wordCount ? `<span class="info-badge">${file.wordCount} 단어</span>` : ''}
+                ${file.contentLength ? `<span class="info-badge">${(file.contentLength / 1000).toFixed(1)}K 글자</span>` : ''}
+              </div>
+            ` : ''}
           </div>
         `;
       }).join('');
@@ -801,34 +954,179 @@
       resultsDiv.innerHTML = '<div class="file-grid">' + fileGridHTML + '</div>';
     }
 
-    // 통계 업데이트
+    // Enhanced 통계 업데이트
     function updateStats() {
       const totalFiles = allFiles.filter(function(f) { return !f.isDirectory; }).length;
       const totalFolders = allFiles.filter(function(f) { return f.isDirectory; }).length;
       const totalSize = allFiles.reduce(function(sum, f) { return sum + (f.size || 0); }, 0);
+      const extractableFiles = allFiles.filter(function(f) { return f.extractable; }).length;
       const scanDuration = scanStartTime ? ((Date.now() - scanStartTime) / 1000).toFixed(1) : 0;
 
       document.getElementById('totalFiles').textContent = totalFiles.toLocaleString();
       document.getElementById('totalFolders').textContent = totalFolders.toLocaleString();
       document.getElementById('totalSize').textContent = formatFileSize(totalSize);
+      document.getElementById('extractableFiles').textContent = extractableFiles.toLocaleString();
       document.getElementById('scanTime').textContent = scanDuration + '초';
       document.getElementById('stats').style.display = 'flex';
     }
 
-    // 파일 필터링
+    // Enhanced 파일 필터링
     function filterFiles() {
       const searchTerm = document.getElementById('searchBox').value.toLowerCase();
       
       if (searchTerm === '') {
         filteredFiles = allFiles;
+        isEnhancedSearchMode = false;
+      } else if (searchTerm.length >= 2) {
+        // Enhanced 검색 모드 활성화
+        isEnhancedSearchMode = true;
+        performEnhancedSearch(searchTerm);
+        return; // Enhanced 검색이 별도로 렌더링을 처리
       } else {
         filteredFiles = allFiles.filter(function(file) {
-          return file.name.toLowerCase().includes(searchTerm) ||
-                 file.path.toLowerCase().includes(searchTerm);
+          return file.name.toLowerCase().includes(searchTerm);
         });
       }
       
       renderFiles(filteredFiles);
+    }
+
+    // Enhanced 검색 수행
+    async function performEnhancedSearch(query) {
+      try {
+        if (!window.electronAPI || typeof window.electronAPI.searchFiles !== 'function') {
+          // fallback to local search
+          filteredFiles = allFiles.filter(function(file) {
+            return file.name.toLowerCase().includes(query.toLowerCase()) ||
+                   (file.title && file.title.toLowerCase().includes(query.toLowerCase())) ||
+                   (file.content && file.content.toLowerCase().includes(query.toLowerCase())) ||
+                   file.path.toLowerCase().includes(query.toLowerCase());
+          });
+          renderFiles(filteredFiles);
+          return;
+        }
+
+        showLoading('Enhanced 검색 중...');
+        
+        const result = await window.electronAPI.searchFiles(query);
+        if (result && result.success) {
+          filteredFiles = result.files || [];
+          renderFiles(filteredFiles);
+          
+          showNotification(`🔎 Enhanced 검색 완료: ${filteredFiles.length}개 결과 (${result.searchTime || 0}ms)`);
+        } else {
+          showError('Enhanced 검색 실패: ' + (result ? result.error : '알 수 없는 오류'));
+        }
+      } catch (error) {
+        console.error('Enhanced 검색 오류:', error);
+        showError('Enhanced 검색 중 오류 발생: ' + error.message);
+      }
+    }
+
+    // Enhanced 검색 다이얼로그 표시 (prompt 대신 커스텀 다이얼로그 사용)
+    function showEnhancedSearch() {
+      // 커스텀 다이얼로그 생성
+      const overlay = document.createElement('div');
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 2000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      `;
+      
+      const dialog = document.createElement('div');
+      dialog.style.cssText = `
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        max-width: 500px;
+        width: 90%;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      `;
+      
+      dialog.innerHTML = `
+        <h3 style="color: #2c3e50; margin-bottom: 15px;">🔎 Enhanced 검색</h3>
+        <p style="margin-bottom: 15px; color: #7f8c8d;">파일명, 제목, 내용, 확장자 등을 검색할 수 있습니다.</p>
+        <input type="text" id="enhancedSearchInput" placeholder="검색어를 입력하세요..." style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 5px; font-size: 14px; margin-bottom: 15px;">
+        <div style="text-align: right;">
+          <button onclick="closeEnhancedSearchDialog()" style="background: #95a5a6; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-right: 10px;">취소</button>
+          <button onclick="executeEnhancedSearch()" style="background: #9b59b6; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">검색</button>
+        </div>
+      `;
+      
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+      
+      // 입력 필드에 포커스
+      setTimeout(() => {
+        const input = document.getElementById('enhancedSearchInput');
+        input.focus();
+        
+        // 엔터키 처리
+        input.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') {
+            executeEnhancedSearch();
+          }
+        });
+      }, 100);
+      
+      // 오버레이 클릭으로 닫기
+      overlay.onclick = function(e) {
+        if (e.target === overlay) {
+          closeEnhancedSearchDialog();
+        }
+      };
+      
+      // 전역 함수들 정의
+      window.closeEnhancedSearchDialog = function() {
+        if (overlay.parentNode) {
+          overlay.parentNode.removeChild(overlay);
+        }
+        delete window.closeEnhancedSearchDialog;
+        delete window.executeEnhancedSearch;
+      };
+      
+      window.executeEnhancedSearch = function() {
+        const searchQuery = document.getElementById('enhancedSearchInput').value.trim();
+        if (searchQuery) {
+          document.getElementById('searchBox').value = searchQuery;
+          performEnhancedSearch(searchQuery);
+          closeEnhancedSearchDialog();
+        }
+      };
+    }
+
+    // 최근 스캔 로드
+    async function loadLatestScan() {
+      try {
+        if (!window.electronAPI || typeof window.electronAPI.getLatestScan !== 'function') {
+          showNotification('최근 스캔 로드 기능이 지원되지 않습니다.', 'error');
+          return;
+        }
+
+        showLoading('최근 스캔 데이터 로드 중...');
+        
+        const result = await window.electronAPI.getLatestScan();
+        if (result && result.success) {
+          allFiles = result.files || [];
+          filteredFiles = allFiles;
+          renderFiles(filteredFiles);
+          updateStats();
+          
+          showNotification(`📂 최근 스캔 로드 완료: ${allFiles.length}개 항목`);
+        } else {
+          showError('최근 스캔 로드 실패: ' + (result ? result.error : '스캔 데이터가 없습니다'));
+        }
+      } catch (error) {
+        console.error('최근 스캔 로드 오류:', error);
+        showError('최근 스캔 로드 중 오류 발생: ' + error.message);
+      }
     }
 
     // 로딩 표시
@@ -837,7 +1135,7 @@
       resultsDiv.innerHTML = `
         <div class="loading">
           <div class="spinner"></div>
-          <div>${message || 'D드라이브를 스캔하는 중...'}</div>
+          <div>${message || '처리 중...'}</div>
           <div class="progress-bar">
             <div class="progress-fill" style="width: 0%"></div>
           </div>
@@ -871,27 +1169,74 @@
       `;
     }
 
-    // 알림 표시
-    function showNotification(message) {
+    // 알림 표시 (중복 방지 기능 추가)
+    function showNotification(message, type = 'success') {
+      // 기존 알림이 있으면 제거
+      const existingNotifications = document.querySelectorAll('.app-notification');
+      existingNotifications.forEach(notification => {
+        if (notification.parentNode) {
+          notification.parentNode.removeChild(notification);
+        }
+      });
+      
       const notification = document.createElement('div');
+      notification.className = 'app-notification'; // 클래스 추가로 식별 가능하게
       notification.style.cssText = `
         position: fixed;
         top: 20px;
         right: 20px;
-        background: #2ecc71;
+        background: ${type === 'error' ? '#e74c3c' : '#2ecc71'};
         color: white;
         padding: 15px 20px;
         border-radius: 5px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         z-index: 1001;
         font-weight: 600;
+        max-width: 300px;
+        animation: slideInRight 0.3s ease-out;
       `;
+      
+      // 애니메이션 추가
+      if (!document.querySelector('#notification-styles')) {
+        const style = document.createElement('style');
+        style.id = 'notification-styles';
+        style.textContent = `
+          @keyframes slideInRight {
+            from {
+              transform: translateX(100%);
+              opacity: 0;
+            }
+            to {
+              transform: translateX(0);
+              opacity: 1;
+            }
+          }
+          @keyframes slideOutRight {
+            from {
+              transform: translateX(0);
+              opacity: 1;
+            }
+            to {
+              transform: translateX(100%);
+              opacity: 0;
+            }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+      
       notification.textContent = message;
       document.body.appendChild(notification);
       
+      // 3초 후 제거
       setTimeout(function() {
         if (notification.parentNode) {
-          notification.parentNode.removeChild(notification);
+          notification.style.animation = 'slideOutRight 0.3s ease-in';
+          setTimeout(() => {
+            if (notification.parentNode) {
+              notification.parentNode.removeChild(notification);
+            }
+          }, 300);
         }
       }, 3000);
     }
@@ -901,14 +1246,21 @@
       await scanSpecificDrive('D:\\');
     }
 
-    // 특정 드라이브 스캔 (안전한 방식)
+    // 특정 드라이브 스캔
     async function scanSpecificDrive(drivePath) {
+      // 중복 실행 방지
+      if (window.isScanning) {
+        console.log('이미 스캔이 진행 중입니다.');
+        return;
+      }
+      
+      window.isScanning = true;
       scanStartTime = Date.now();
       const scanBtn = document.getElementById('scanBtn');
       const refreshBtn = document.getElementById('refreshBtn');
       
       scanBtn.disabled = true;
-      scanBtn.textContent = '🔄 ' + drivePath + ' 스캔 중...';
+      scanBtn.textContent = '🔄 ' + drivePath + ' Enhanced 스캔 중...';
       
       // 드라이브 버튼 활성화 상태 업데이트
       const driveButtons = document.querySelectorAll('.drive-btn');
@@ -919,11 +1271,10 @@
         }
       }
       
-      const progressInterval = showLoading(drivePath + ' 드라이브를 스캔하는 중...');
+      const progressInterval = showLoading(drivePath + ' Enhanced 스캔 및 내용 분석 중...');
       currentPath = drivePath;
       
       try {
-        // Electron API 존재 확인
         if (!window.electronAPI) {
           throw new Error('Electron API가 로드되지 않았습니다. Electron 환경에서 실행해주세요.');
         }
@@ -941,27 +1292,30 @@
           renderFiles(filteredFiles);
           updateStats();
           refreshBtn.disabled = false;
-          showNotification('✅ ' + drivePath + ' 스캔 완료! ' + allFiles.length + '개 항목을 찾았습니다.');
           
-          console.log(`스캔 완료: ${allFiles.length}개 항목 발견`);
+          const extractableCount = allFiles.filter(f => f.extractable).length;
+          showNotification(`✅ Enhanced 스캔 완료!\n${allFiles.length}개 항목, ${extractableCount}개 내용 추출`);
+          
+          console.log(`Enhanced 스캔 완료: ${allFiles.length}개 항목, ${extractableCount}개 내용 추출`);
         } else {
           const errorMsg = result ? result.error : '알 수 없는 오류가 발생했습니다.';
-          showError(drivePath + ' 스캔 실패: ' + errorMsg);
+          showError(drivePath + ' Enhanced 스캔 실패: ' + errorMsg);
         }
       } catch (error) {
         clearInterval(progressInterval);
-        console.error('스캔 오류:', error);
+        console.error('Enhanced 스캔 오류:', error);
         
         if (error.message.includes('Electron API') || error.message.includes('scanDirectory')) {
           showError('Electron 환경이 아니거나 필요한 API가 로드되지 않았습니다.\n\n' + 
-                   '이 파일 탐색기는 Electron 앱에서 실행되어야 합니다.\n' +
+                   '이 Enhanced 파일 탐색기는 Electron 앱에서 실행되어야 합니다.\n' +
                    '웹 브라우저에서는 보안상 로컬 파일 시스템에 접근할 수 없습니다.');
         } else {
-          showError(drivePath + ' 스캔 중 오류 발생: ' + error.message);
+          showError(drivePath + ' Enhanced 스캔 중 오류 발생: ' + error.message);
         }
       } finally {
         scanBtn.disabled = false;
         scanBtn.textContent = '🔍 드라이브 스캔';
+        window.isScanning = false; // 스캔 완료 플래그
       }
     }
 
@@ -979,14 +1333,16 @@
       allFiles = [];
       filteredFiles = [];
       currentPath = '';
+      isEnhancedSearchMode = false;
       document.getElementById('searchBox').value = '';
       document.getElementById('stats').style.display = 'none';
       document.getElementById('refreshBtn').disabled = true;
       document.getElementById('results').innerHTML = `
         <div class="empty-state">
           <div style="font-size: 4em; margin-bottom: 20px;">💿</div>
-          <h3>파일 시스템을 스캔해보세요</h3>
-          <p>D드라이브 또는 다른 드라이브를 선택하여 파일과 폴더를 탐색할 수 있습니다.</p>
+          <h3>Enhanced 파일 시스템을 스캔해보세요</h3>
+          <p>드라이브를 선택하여 파일과 폴더를 탐색하고 내용을 분석할 수 있습니다.</p>
+          <p style="margin-top: 10px; color: #9b59b6;">🔎 고급 검색으로 파일 내용까지 검색 가능합니다!</p>
         </div>
       `;
       
@@ -1003,16 +1359,19 @@
     }
 
     // 개발자 디버그 함수
-    window.debugFileExplorer = {
+    window.debugEnhancedFileExplorer = {
       getAllFiles: function() { return allFiles; },
       getFilteredFiles: function() { return filteredFiles; },
       getCurrentPath: function() { return currentPath; },
+      isEnhancedSearchMode: function() { return isEnhancedSearchMode; },
       clearResults: clearResults,
-      version: '1.5.0 - 안정화 버전'
+      performEnhancedSearch: performEnhancedSearch,
+      version: '2.0.0 - Enhanced 버전'
     };
 
-    console.log('🚀 파일 탐색기 안정화 버전 로드 완료');
-    console.log('🛠️ 개발자 도구: window.debugFileExplorer 사용 가능');
+    console.log('🚀 Enhanced 파일 탐색기 로드 완료');
+    console.log('🛠️ 개발자 도구: window.debugEnhancedFileExplorer 사용 가능');
+    console.log('✨ Enhanced 기능: 파일 내용 분석, 고급 검색, 제목 추출');
   </script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-// main.js - 파일 내용 추출 기능 포함
+// main.js - Enhanced 파일 탐색기 메인 프로세스
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
@@ -6,7 +6,7 @@ const fs = require('fs').promises;
 let mainWindow;
 let fileDB;
 
-// 파일 내용 추출기
+// 파일 내용 추출기 클래스
 class FileContentExtractor {
     constructor() {
         // 지원되는 텍스트 파일 확장자
@@ -147,7 +147,7 @@ class FileContentExtractor {
     }
 }
 
-// 향상된 하이브리드 파일 DB 클래스
+// Enhanced 하이브리드 파일 DB 클래스
 class EnhancedHybridFileDB {
     constructor(appPath) {
         this.dbPath = path.join(appPath, 'enhanced_scan_data.json');
@@ -488,6 +488,7 @@ class EnhancedHybridFileDB {
     }
 }
 
+// 앱 초기화
 app.whenReady().then(() => {
     initDatabase();
     createWindow();
@@ -512,7 +513,7 @@ function createWindow() {
             contextIsolation: true,
             preload: path.join(__dirname, 'preload.js')
         },
-        title: 'D드라이브 파일 탐색기 Pro - Enhanced Search',
+        title: 'D드라이브 파일 탐색기 Enhanced',
         show: false
     });
 
@@ -552,9 +553,6 @@ app.on('activate', () => {
         createWindow();
     }
 });
-
-// 기존 유틸리티 함수들과 IPC 핸들러들은 동일...
-// (원래 main.js의 나머지 코드와 동일하므로 생략)
 
 // 유틸리티 함수들
 function normalizePath(filePath) {
@@ -621,7 +619,7 @@ function scanDirectorySafe(dirPath, maxItems = 1000) {
     });
 }
 
-// IPC 핸들러들 (기존과 동일)
+// IPC 핸들러들
 ipcMain.handle('scan-d-drive', async () => {
     return await scanDrive('D:\\');
 });
@@ -643,32 +641,59 @@ async function scanDrive(drivePath) {
             // 내용 추출 및 데이터베이스에 저장
             const scanId = await fileDB.addScan(drivePath, files);
             
+            // 데이터베이스에서 enhanced 파일 정보 가져오기
+            const enhancedFiles = fileDB.getFilesByScan(scanId);
+            
+            // 직렬화 가능한 형태로 변환 (Set, Map 등 제거)
+            const serializedFiles = enhancedFiles.map(file => ({
+                name: file.name,
+                path: file.path,
+                isDirectory: file.isDirectory,
+                size: file.size || 0,
+                modified: file.modified,
+                created: file.created,
+                // Enhanced 정보들 추가
+                title: file.title || file.name,
+                content: file.content || '',
+                extractable: file.extractable || false,
+                contentLength: file.contentLength || 0,
+                wordCount: file.wordCount || 0,
+                extension: file.extension || '',
+                scanId: file.scanId
+            }));
+            
             const stats = {
-                totalFiles: files.filter(f => !f.isDirectory).length,
-                totalFolders: files.filter(f => f.isDirectory).length,
-                totalSize: files.reduce((sum, f) => sum + (f.size || 0), 0),
+                totalFiles: serializedFiles.filter(f => !f.isDirectory).length,
+                totalFolders: serializedFiles.filter(f => f.isDirectory).length,
+                totalSize: serializedFiles.reduce((sum, f) => sum + (f.size || 0), 0),
+                extractableFiles: serializedFiles.filter(f => f.extractable).length,
                 duration: (Date.now() - startTime) / 1000
             };
             
-            console.log(`Enhanced 스캔 및 저장 완료: ${files.length}개 항목, ${stats.duration.toFixed(1)}초`);
+            console.log(`Enhanced 스캔 및 저장 완료: ${serializedFiles.length}개 항목, ${stats.duration.toFixed(1)}초`);
             
             return { 
                 success: true, 
-                files,
+                files: serializedFiles, // enhanced 파일 정보 포함
                 scanId,
                 stats
             };
         } else {
-            return { success: true, files: [], stats: { duration: (Date.now() - startTime) / 1000 } };
+            return { 
+                success: true, 
+                files: [], 
+                stats: { duration: (Date.now() - startTime) / 1000 }
+            };
         }
     } catch (error) {
         console.error('Enhanced 스캔 실패:', error);
-        return { success: false, error: error.message, files: [] };
+        return { 
+            success: false, 
+            error: error.message, 
+            files: [] 
+        };
     }
 }
-
-// 나머지 IPC 핸들러들 (기존과 동일하므로 생략...)
-// search-files, get-latest-scan, get-scan-history, etc.
 
 // 데이터베이스 관련 IPC 핸들러들
 ipcMain.handle('search-files', async (event, query) => {
@@ -676,11 +701,29 @@ ipcMain.handle('search-files', async (event, query) => {
         if (!fileDB) return { success: false, error: 'Database not initialized' };
         
         const startTime = Date.now();
-        const files = fileDB.searchFiles(query, { limit: 1000 });
+        const searchResults = fileDB.searchFiles(query, { limit: 1000 });
         const searchTime = Date.now() - startTime;
         
-        console.log(`Enhanced 검색 완료: "${query}" - ${files.length}개 결과, ${searchTime}ms`);
-        return { success: true, files, searchTime };
+        // 직렬화 가능한 형태로 변환
+        const serializedResults = searchResults.map(file => ({
+            name: file.name,
+            path: file.path,
+            isDirectory: file.isDirectory,
+            size: file.size || 0,
+            modified: file.modified,
+            created: file.created,
+            title: file.title || file.name,
+            content: file.content || '',
+            extractable: file.extractable || false,
+            contentLength: file.contentLength || 0,
+            wordCount: file.wordCount || 0,
+            extension: file.extension || '',
+            relevanceScore: file.relevanceScore || 0,
+            scanId: file.scanId
+        }));
+        
+        console.log(`Enhanced 검색 완료: "${query}" - ${serializedResults.length}개 결과, ${searchTime}ms`);
+        return { success: true, files: serializedResults, searchTime };
     } catch (error) {
         console.error('Enhanced 검색 실패:', error);
         return { success: false, error: error.message };
@@ -692,7 +735,25 @@ ipcMain.handle('get-latest-scan', async () => {
         if (!fileDB) return { success: false, error: 'Database not initialized' };
         
         const files = fileDB.getLatestFiles();
-        return { success: true, files };
+        
+        // 직렬화 가능한 형태로 변환
+        const serializedFiles = files.map(file => ({
+            name: file.name,
+            path: file.path,
+            isDirectory: file.isDirectory,
+            size: file.size || 0,
+            modified: file.modified,
+            created: file.created,
+            title: file.title || file.name,
+            content: file.content || '',
+            extractable: file.extractable || false,
+            contentLength: file.contentLength || 0,
+            wordCount: file.wordCount || 0,
+            extension: file.extension || '',
+            scanId: file.scanId
+        }));
+        
+        return { success: true, files: serializedFiles };
     } catch (error) {
         return { success: false, error: error.message };
     }
@@ -736,13 +797,31 @@ ipcMain.handle('load-scan-files', async (event, scanId) => {
         if (!fileDB) return { success: false, error: 'Database not initialized' };
         
         const files = fileDB.getFilesByScan(scanId);
-        return { success: true, files };
+        
+        // 직렬화 가능한 형태로 변환
+        const serializedFiles = files.map(file => ({
+            name: file.name,
+            path: file.path,
+            isDirectory: file.isDirectory,
+            size: file.size || 0,
+            modified: file.modified,
+            created: file.created,
+            title: file.title || file.name,
+            content: file.content || '',
+            extractable: file.extractable || false,
+            contentLength: file.contentLength || 0,
+            wordCount: file.wordCount || 0,
+            extension: file.extension || '',
+            scanId: file.scanId
+        }));
+        
+        return { success: true, files: serializedFiles };
     } catch (error) {
         return { success: false, error: error.message };
     }
 });
 
-// 파일 상세 정보 조회 (새로운 기능)
+// 파일 상세 정보 조회
 ipcMain.handle('get-file-details', async (event, filePath) => {
     try {
         if (!fileDB) return { success: false, error: 'Database not initialized' };
@@ -750,7 +829,25 @@ ipcMain.handle('get-file-details', async (event, filePath) => {
         const file = fileDB.data.files.find(f => f.path === filePath);
         if (!file) return { success: false, error: 'File not found in database' };
         
-        return { success: true, file };
+        // 직렬화 가능한 형태로 변환
+        const serializedFile = {
+            name: file.name,
+            path: file.path,
+            isDirectory: file.isDirectory,
+            size: file.size || 0,
+            modified: file.modified,
+            created: file.created,
+            title: file.title || file.name,
+            content: file.content || '',
+            extractable: file.extractable || false,
+            contentLength: file.contentLength || 0,
+            wordCount: file.wordCount || 0,
+            extension: file.extension || '',
+            extractionReason: file.extractionReason || '',
+            scanId: file.scanId
+        };
+        
+        return { success: true, file: serializedFile };
     } catch (error) {
         return { success: false, error: error.message };
     }
@@ -836,3 +933,4 @@ process.on('uncaughtException', (error) => {
 process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled Rejection:', reason);
 });
+
