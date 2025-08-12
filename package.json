@@ -1,76 +1,53 @@
 {
-  "name": "d-drive-explorer-pro",
-  "version": "1.0.0",
-  "description": "D드라이브 파일 탐색기 Pro - 하이브리드 DB",
-  "main": "main.js",
-  "scripts": {
-      "start": "electron .",
-      "build": "electron-builder --publish=never",
-      "clean": "rimraf node_modules package-lock.json"
-  },
-  "keywords": ["electron", "file-explorer", "desktop-app", "hybrid-db"],
-  "author": "Your Name",
-  "license": "MIT",
-  "devDependencies": {
-      "electron": "^27.0.0",
-      "electron-builder": "^24.6.4"
-  },
-  "build": {
-      "appId": "com.yourcompany.d-drive-explorer-pro",
-      "productName": "D드라이브 파일 탐색기 Pro",
-      "directories": {
-          "output": "dist"
-      },
-      "files": [
-          "main.js",
-          "preload.js", 
-          "index.html",
-          "package.json"
-      ],
-      "win": {
-          "target": [
-              {
-                  "target": "nsis",
-                  "arch": ["arm64", "x64"]
-              }
-          ]
-      },
-      "mac": {
-          "target": [
-              {
-                  "target": "dmg",
-                  "arch": ["arm64", "x64"]
-              }
-          ]
-      },
-      "nsis": {
-          "oneClick": false,
-          "allowToChangeInstallationDirectory": true
-      }
-  }
-}
-{
     "name": "d-drive-explorer",
     "version": "1.0.0",
-    "description": "D드라이브 파일 탐색기",
+    "description": "D드라이브 파일 탐색기 with SQLite",
     "main": "main.js",
     "scripts": {
         "start": "electron .",
         "build": "electron-builder",
-        "dist": "electron-builder --publish=never"
+        "dist": "electron-builder --publish=never",
+        "rebuild": "electron-rebuild",
+        "postinstall": "npm run rebuild",
+        "dev": "electron . --dev"
     },
-    "keywords": ["electron", "file-explorer", "desktop-app"],
+    "keywords": ["electron", "file-explorer", "desktop-app", "sqlite"],
     "author": "Your Name",
     "license": "MIT",
+    "dependencies": {
+        "better-sqlite3": "^8.7.0"
+    },
     "devDependencies": {
         "electron": "^27.0.0",
-        "electron-builder": "^24.6.4"
+        "electron-builder": "^24.6.4",
+        "electron-rebuild": "^3.2.9"
     },
     "build": {
         "appId": "com.yourcompany.d-drive-explorer",
         "productName": "D드라이브 파일 탐색기",
         "directories": {
             "output": "dist"
+        },
+        "win": {
+            "target": [
+                {
+                    "target": "nsis",
+                    "arch": ["x64", "arm64"]
+                }
+            ],
+            "icon": "assets/icon.ico"
+        },
+        "mac": {
+            "target": [
+                {
+                    "target": "dmg",
+                    "arch": ["x64", "arm64"]
+                }
+            ]
+        },
+        "nsis": {
+            "oneClick": false,
+            "allowToChangeInstallationDirectory": true
         },
         "files": [
             "**/*",
@@ -83,16 +60,15 @@
             "!**/._*",
             "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
             "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
-            "!**/{appveyor.yml,.travis.yml,circle.yml}",
             "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
-        ],
-        "win": {
-            "target": "nsis",
-            "icon": "assets/icon.ico"
-        },
-        "nsis": {
-            "oneClick": false,
-            "allowToChangeInstallationDirectory": true
-        }
+        ]
+    },
+    "electronRebuild": {
+        "beforeRebuild": [
+            {
+                "name": "better-sqlite3",
+                "args": ["--target_arch=arm64"]
+            }
+        ]
     }
 }
